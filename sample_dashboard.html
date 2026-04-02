@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IT FEST — DINO GAME</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green:   #39ff14;
+    --green2:  #1aad00;
+    --dark:    #050a05;
+    --panel:   #0b150b;
+    --border:  #1e3d1e;
+    --amber:   #ffb400;
+    --red:     #ff3333;
+    --text:    #c8ffc8;
+    --muted:   #4a784a;
+    --pixel:   "Press Start 2P", monospace;
+    --mono:    "Share Tech Mono", monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--dark);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.18) 2px,
+      rgba(0,0,0,0.18) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Grid background */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(57,255,20,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(57,255,20,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 32px 20px;
+  }
+
+  /* ── Header ── */
+  .header {
+    text-align: center;
+    margin-bottom: 40px;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  .header-eyebrow {
+    font-family: var(--pixel);
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 4px;
+    margin-bottom: 12px;
+  }
+
+  .header-title {
+    font-family: var(--pixel);
+    font-size: clamp(18px, 4vw, 32px);
+    color: var(--green);
+    text-shadow: 0 0 20px rgba(57,255,20,0.5), 0 0 40px rgba(57,255,20,0.2);
+    line-height: 1.4;
+    margin-bottom: 8px;
+    animation: glitch 4s infinite;
+  }
+
+  .dino-sprite {
+    font-size: 28px;
+    display: inline-block;
+    animation: run 0.4s steps(2) infinite;
+    margin: 0 8px;
+  }
+
+  .header-sub {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  /* ── Pixel divider ── */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 24px 0;
+    color: var(--border);
+    font-family: var(--pixel);
+    font-size: 8px;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+  }
+
+  /* ── Two-column layout ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 640px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── Panel ── */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px;
+    position: relative;
+    animation: fadeUp 0.5s ease both;
+  }
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--green2), transparent);
+    opacity: 0.6;
+  }
+  .panel-title {
+    font-family: var(--pixel);
+    font-size: 9px;
+    color: var(--green);
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-title .dot {
+    width: 6px; height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--green);
+    animation: blink 1s steps(1) infinite;
+  }
+
+  /* ── Form elements ── */
+  label {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    background: #060e06;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--green);
+    font-family: var(--pixel);
+    font-size: 11px;
+    padding: 12px 14px;
+    outline: none;
+    letter-spacing: 1px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    margin-bottom: 16px;
+  }
+  input[type="text"]:focus {
+    border-color: var(--green2);
+    box-shadow: 0 0 0 2px rgba(57,255,20,0.1), inset 0 0 10px rgba(57,255,20,0.03);
+  }
+  input[type="text"]::placeholder { color: var(--muted); }
+
+  .btn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: var(--pixel);
+    font-size: 10px;
+    padding: 14px;
+    cursor: pointer;
+    border-radius: 3px;
+    letter-spacing: 2px;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: var(--green);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.2s;
+    z-index: 0;
+  }
+  .btn:hover::before { transform: scaleX(1); }
+  .btn:hover { color: var(--dark); box-shadow: 0 0 20px rgba(57,255,20,0.3); }
+  .btn span { position: relative; z-index: 1; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn:disabled::before { display: none; }
+
+  /* ── Status message ── */
+  .status {
+    margin-top: 14px;
+    font-size: 11px;
+    min-height: 18px;
+    text-align: center;
+    letter-spacing: 1px;
+    transition: all 0.3s;
+  }
+  .status.ok     { color: var(--green); }
+  .status.error  { color: var(--red); }
+  .status.wait   { color: var(--amber); }
+
+  /* ── Info blurb (why this game) ── */
+  .info-block {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+  .info-block p {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 10px;
+  }
+  .chip {
+    display: inline-block;
+    font-family: var(--pixel);
+    font-size: 7px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--amber);
+    margin: 3px 3px 3px 0;
+  }
+
+  /* ── Rules ── */
+  .rules-list {
+    list-style: none;
+    font-size: 11px;
+    color: var(--text);
+    line-height: 2;
+  }
+  .rules-list li::before {
+    content: '▶ ';
+    color: var(--green);
+    font-size: 9px;
+  }
+
+  /* ── Leaderboard ── */
+  .leaderboard-panel { animation-delay: 0.1s; }
+
+  .lb-empty {
+    text-align: center;
+    color: var(--muted);
+    font-size: 11px;
+    padding: 24px 0;
+  }
+
+  .lb-row {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    animation: fadeUp 0.3s ease both;
+    transition: background 0.2s;
+  }
+  .lb-row:hover { background: rgba(57,255,20,0.03); }
+  .lb-row:last-child { border-bottom: none; }
+
+  .lb-rank {
+    font-family: var(--pixel);
+    font-size: 8px;
+    color: var(--muted);
+    text-align: center;
+  }
+  .lb-rank.gold   { color: #ffd700; text-shadow: 0 0 8px #ffd700; }
+  .lb-rank.silver { color: #c0c0c0; }
+  .lb-rank.bronze { color: #cd7f32; }
+
+  .lb-name {
+    color: var(--text);
+    font-family: var(--mono);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lb-name.top { color: var(--green); }
+
+  .lb-score {
+    font-family: var(--pixel);
+    font-size: 9px;
+    color: var(--amber);
+    white-space: nowrap;
+  }
+
+  /* ── Now playing ticker ── */
+  .now-playing {
+    text-align: center;
+    font-family: var(--pixel);
+    font-size: 8px;
+    color: var(--green2);
+    padding: 10px 0 16px;
+    letter-spacing: 2px;
+    min-height: 36px;
+    transition: all 0.3s;
+  }
+
+  /* ── LCD preview ── */
+  .lcd-preview {
+    margin-top: 20px;
+    padding: 14px;
+    background: #0a1a08;
+    border: 1px solid #1a3018;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: #7dff6e;
+    line-height: 1.9;
+    letter-spacing: 1px;
+    text-shadow: 0 0 4px rgba(100,255,80,0.4);
+  }
+  .lcd-preview .lcd-row {
+    display: flex;
+    justify-content: space-between;
+    white-space: pre;
+  }
+  .lcd-label {
+    font-family: var(--pixel);
+    font-size: 7px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+  }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    margin-top: 40px;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
+  @keyframes run {
+    from { transform: translateY(0px); }
+    to   { transform: translateY(-3px); }
+  }
+  @keyframes glitch {
+    0%, 92%, 100% { text-shadow: 0 0 20px rgba(57,255,20,0.5); }
+    93% { text-shadow: -2px 0 var(--red), 2px 0 #00f; }
+    94% { text-shadow: 2px 0 var(--red), -2px 0 #00f; }
+    95% { text-shadow: 0 0 20px rgba(57,255,20,0.5); }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.5; }
+  }
+
+  .connecting { animation: pulse 1s ease infinite; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <header class="header">
+    <p class="header-eyebrow">CSIT DEPARTMENT · IT FEST 2025</p>
+    <h1 class="header-title">
+      <span class="dino-sprite">🦕</span>
+      DINO RUN
+      <span class="dino-sprite" style="animation-delay:0.2s">🌵</span>
+    </h1>
+    <p class="header-sub">Arduino × ESP32 × Firebase</p>
+  </header>
+
+  <!-- Now playing -->
+  <div class="now-playing" id="nowPlaying">— Waiting for next player —</div>
+
+  <!-- Main grid -->
+  <div class="main-grid">
+
+    <!-- LEFT: Name entry + rules -->
+    <div class="panel">
+      <div class="panel-title"><span class="dot"></span> PLAYER ENTRY</div>
+
+      <label for="nameInput">ENTER YOUR NAME</label>
+      <input type="text" id="nameInput" maxlength="12" placeholder="e.g. Maria"
+             autocomplete="off" spellcheck="false">
+
+      <button class="btn" id="startBtn" onclick="startGame()">
+        <span>▶ START GAME</span>
+      </button>
+
+      <div class="status" id="statusMsg"></div>
+
+      <!-- LCD preview -->
+      <div style="margin-top:20px">
+        <div class="lcd-label">LCD PREVIEW</div>
+        <div class="lcd-preview" id="lcdPreview">
+          <div class="lcd-row"><span>                </span></div>
+          <div class="lcd-row"><span>                </span></div>
+          <div class="lcd-row"><span>Waiting...      </span></div>
+          <div class="lcd-row"><span>HI: 0           </span></div>
+        </div>
+      </div>
+
+      <!-- Info blurb -->
+      <div class="info-block">
+        <p>This game runs entirely on hardware — no PC needed once it starts. Here's what's inside:</p>
+        <div>
+          <span class="chip">ESP32</span>
+          <span class="chip">I2C LCD 4×16</span>
+          <span class="chip">Joystick</span>
+          <span class="chip">18650 Battery</span>
+          <span class="chip">Firebase RTDB</span>
+        </div>
+        <p style="margin-top:10px">Joystick UP = jump · DOWN = duck. Avoid the cacti!</p>
+      </div>
+
+      <!-- Rules -->
+      <div class="info-block">
+        <div class="panel-title" style="margin-bottom:12px"><span class="dot"></span> HOW TO PLAY</div>
+        <ul class="rules-list">
+          <li>Type your name above and press START</li>
+          <li>Walk to the LCD game station</li>
+          <li>Push joystick UP to jump</li>
+          <li>Push joystick DOWN to duck</li>
+          <li>Avoid the cacti — survive!</li>
+          <li>Your score posts here automatically</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RIGHT: Leaderboard -->
+    <div class="panel leaderboard-panel">
+      <div class="panel-title"><span class="dot"></span> HALL OF FAME</div>
+      <div id="leaderboard">
+        <div class="lb-empty connecting">Connecting to database...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="divider">· · · · · · ·</div>
+  <div class="footer">
+    Made with ❤ for IT FEST · ESP32 + Firebase + Vanilla JS
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     Firebase SDK  — replace the config below with yours
+     ═══════════════════════════════════════════════════════════ -->
+<script type="module">
+import { initializeApp }          from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, set, onValue, query, orderByChild, limitToLast, get }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+// ─────────────────────────────────────────────────────────────
+//  🔧 REPLACE THIS with your actual Firebase project config
+//     Firebase Console → Project Settings → Your apps → SDK setup
+// ─────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT.firebaseapp.com",
+  databaseURL:       "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId:         "YOUR_PROJECT_ID",
+  storageBucket:     "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// ── LCD preview helper ────────────────────────────────────────
+function padRow(str, len = 16) {
+  return str.length >= len ? str.substring(0, len) : str + ' '.repeat(len - str.length);
+}
+function updateLCDPreview(name, hiScore) {
+  const el = document.getElementById('lcdPreview');
+  const rows = [
+    padRow('                '),                      // terrain row 0
+    padRow('                '),                      // terrain row 1
+    padRow('Player: ' + (name || '').substring(0, 8)),
+    padRow('HI: ' + (hiScore || 0))
+  ];
+  el.innerHTML = rows.map(r =>
+    `<div class="lcd-row"><span>${r}</span></div>`
+  ).join('');
+}
+
+// ── Fetch initial hi-score for preview ───────────────────────
+let globalHi = 0;
+get(ref(db, '/hiScore')).then(snap => {
+  if (snap.exists()) { globalHi = snap.val(); updateLCDPreview('', globalHi); }
+});
+
+// ── startGame: write player name to Firebase ─────────────────
+window.startGame = async function () {
+  const nameInput = document.getElementById('nameInput');
+  const btn       = document.getElementById('startBtn');
+  const status    = document.getElementById('statusMsg');
+
+  const name = nameInput.value.trim();
+  if (!name) {
+    status.textContent = '⚠ Please enter your name first.';
+    status.className   = 'status error';
+    return;
+  }
+  if (name.length < 2) {
+    status.textContent = '⚠ Name must be at least 2 characters.';
+    status.className   = 'status error';
+    return;
+  }
+
+  btn.disabled       = true;
+  status.textContent = '● Sending to game station...';
+  status.className   = 'status wait';
+
+  try {
+    await set(ref(db, '/currentPlayer'), { name, ready: true, timestamp: Date.now() });
+
+    status.textContent = '✔ Ready! Walk to the LCD station.';
+    status.className   = 'status ok';
+
+    document.getElementById('nowPlaying').textContent = '▶ NOW PLAYING: ' + name.toUpperCase();
+    updateLCDPreview(name, globalHi);
+    nameInput.value = '';
+
+    setTimeout(() => {
+      btn.disabled       = false;
+      status.textContent = '';
+      status.className   = 'status';
+    }, 8000);
+
+  } catch (err) {
+    status.textContent = '✖ Error: ' + err.message;
+    status.className   = 'status error';
+    btn.disabled       = false;
+  }
+};
+
+// Enter key submits
+document.getElementById('nameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') window.startGame();
+});
+
+// ── Live leaderboard ──────────────────────────────────────────
+const rankClass = ['gold', 'silver', 'bronze'];
+const rankLabel = ['🥇', '🥈', '🥉'];
+
+const scoresQuery = query(
+  ref(db, '/scores'),
+  orderByChild('score'),
+  limitToLast(15)
+);
+
+onValue(scoresQuery, (snapshot) => {
+  const lb = document.getElementById('leaderboard');
+
+  if (!snapshot.exists()) {
+    lb.innerHTML = '<div class="lb-empty">No scores yet — be the first!</div>';
+    return;
+  }
+
+  const scores = [];
+  snapshot.forEach(child => scores.push(child.val()));
+  scores.sort((a, b) => b.score - a.score);
+
+  // Update global hi
+  if (scores.length > 0) {
+    globalHi = scores[0].score;
+    updateLCDPreview('', globalHi);
+  }
+
+  lb.innerHTML = scores.map((s, i) => `
+    <div class="lb-row" style="animation-delay:${i * 0.04}s">
+      <div class="lb-rank ${i < 3 ? rankClass[i] : ''}">
+        ${i < 3 ? rankLabel[i] : (i + 1)}
+      </div>
+      <div class="lb-name ${i === 0 ? 'top' : ''}">${s.name}</div>
+      <div class="lb-score">${s.score}</div>
+    </div>
+  `).join('');
+});
+
+// ── Live "now playing" from Firebase ─────────────────────────
+onValue(ref(db, '/currentPlayer/name'), (snap) => {
+  if (snap.exists() && snap.val()) {
+    document.getElementById('nowPlaying').textContent =
+      '▶ NOW PLAYING: ' + snap.val().toUpperCase();
+  }
+});
+</script>
+</body>
+</html>
