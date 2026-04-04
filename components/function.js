@@ -1,73 +1,109 @@
-// ── Game metadata ─────────────────────────────────────────────
-const GAMES = [
-  { id:'dino',   num:'01', name:'Dino Run',    hint:'UP=jump  DOWN=duck',    icon:'🦕', hi:0 },
-  { id:'snake',  num:'02', name:'Snake',       hint:'Joystick = steer',      icon:'🐍', hi:0 },
-  { id:'maze',   num:'03', name:'Maze Runner', hint:'Navigate to EXIT',      icon:'🧩', hi:0 },
-  { id:'flappy', num:'04', name:'Flappy Bird', hint:'UP=flap  avoid pipes',  icon:'🐦', hi:0 },
-  { id:'pac',    num:'05', name:'Pac-Man',     hint:'Eat all the dots',      icon:'👻', hi:0 },
-  { id:'tetris', num:'06', name:'Tetris',      hint:'X=move UP=rotate',      icon:'🟦', hi:0 },
-];
+import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, set, get, onValue, query, orderByChild, limitToLast }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-// ── Sample leaderboard data (replace with Firebase later) ──────
-const SAMPLE_SCORES = {
-  dino:   [ {name:'Angelo',score:312},{name:'Maria',score:287},{name:'Jake',score:201},{name:'Sofia',score:155},{name:'Luis',score:98} ],
-  snake:  [ {name:'Reyes',score:24},{name:'Kim',score:19},{name:'Cruz',score:14},{name:'Tan',score:11},{name:'Bautista',score:8} ],
-  maze:   [ {name:'Garcia',score:480},{name:'Santos',score:390},{name:'Lim',score:310},{name:'Flores',score:260},{name:'Ramos',score:150} ],
-  flappy: [ {name:'Torres',score:18},{name:'Dela Cruz',score:12},{name:'Villanueva',score:9},{name:'Mendoza',score:7},{name:'Reyes',score:5} ],
-  pac:    [ {name:'Lopez',score:2340},{name:'Aquino',score:1980},{name:'Vergara',score:1640},{name:'Padilla',score:1200},{name:'Macaraeg',score:890} ],
-  tetris: [ {name:'Perez',score:1100},{name:'Domingo',score:870},{name:'Castillo',score:720},{name:'Navarro',score:540},{name:'Ocampo',score:310} ],
+// ── Firebase config ───────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyDQkY6TuPJpvd5r7ZwMXxlaxxsOTR7l470",
+  authDomain:        "dino-game-59371.firebaseapp.com",
+  databaseURL:       "https://dino-game-59371-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "dino-game-59371",
+  storageBucket:     "dino-game-59371.firebasestorage.app",
+  messagingSenderId: "57888134950",
+  appId:             "1:57888134950:web:55edb0a5c1b31f957dd3e7",
+  measurementId:     "G-V7V6T1NWVW"
 };
 
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// ── Firebase status indicator ─────────────────────────────────
+function setFbStatus(ok, msg) {
+  const dot   = document.getElementById('fbDot');
+  const label = document.getElementById('fbStatusLabel');
+  const sub   = document.getElementById('fbStatusSub');
+  dot.className   = 'status-dot' + (ok ? '' : ' offline');
+  label.textContent = ok ? 'LIVE' : 'OFFLINE';
+  sub.textContent   = msg;
+}
+
+// ── Games metadata ────────────────────────────────────────────
+const GAMES = [
+  { id:'dino',  num:'01', name:'Dino Run',    hint:'UP=jump  avoid cacti', icon:'🦕' },
+  { id:'snake', num:'02', name:'Snake',       hint:'Joystick = steer',     icon:'🐍' },
+  { id:'maze',  num:'03', name:'Maze Runner', hint:'60s timer per level',  icon:'🧩' },
+];
 let currentTab = 'dino';
 
-// ── Render games grid ──────────────────────────────────────────
-function renderGames() {
-  const grid = document.getElementById('gamesGrid');
-  grid.innerHTML = GAMES.map(g => `
+// ── Render game cards ─────────────────────────────────────────
+function renderGames(hiMap={}) {
+  document.getElementById('gamesGrid').innerHTML = GAMES.map(g => `
     <div class="game-card" onclick="switchTab('${g.id}')">
       <div class="game-num">${g.num}</div>
       <div class="game-name">${g.icon} ${g.name}</div>
       <div class="game-hint">${g.hint}</div>
-      <div class="game-hi">HI: ${g.hi}</div>
+      <div class="game-hi" id="hi-${g.id}">HI: ${hiMap[g.id] || '---'}</div>
     </div>
   `).join('');
 }
 
-// ── Render leaderboard tabs ────────────────────────────────────
+// ── Tabs ──────────────────────────────────────────────────────
 function renderTabs() {
-  const tabs = document.getElementById('lbTabs');
-  tabs.innerHTML = GAMES.map(g => `
+  document.getElementById('lbTabs').innerHTML = GAMES.map(g => `
     <div class="lb-tab ${g.id===currentTab?'active':''}" onclick="switchTab('${g.id}')">${g.icon} ${g.name.split(' ')[0]}</div>
   `).join('');
 }
 
-// ── Render leaderboard list ────────────────────────────────────
+// ── Leaderboard renderer ──────────────────────────────────────
 const RANK_EMOJI = ['🥇','🥈','🥉'];
-function renderLeaderboard(gameId) {
+function renderRows(scores) {
   const list = document.getElementById('lbList');
-  const scores = SAMPLE_SCORES[gameId] || [];
   if (!scores.length) {
     list.innerHTML = '<div class="lb-empty">No scores yet<br>Be the first!</div>';
     return;
   }
-  list.innerHTML = scores
-    .sort((a,b) => b.score - a.score)
-    .map((s, i) => `
-      <div class="lb-row" style="animation-delay:${i*0.04}s">
-        <div class="lb-rank ${i===0?'r1':i===1?'r2':i===2?'r3':''}">${i<3?RANK_EMOJI[i]:(i+1)}</div>
-        <div class="lb-name ${i===0?'top1':''}">${s.name}</div>
-        <div class="lb-score">${s.score}</div>
-      </div>
-    `).join('');
+  list.innerHTML = scores.map((s,i) => `
+    <div class="lb-row" style="animation-delay:${i*0.04}s">
+      <div class="lb-rank ${i<3?'r'+(i+1):''}">${i<3?RANK_EMOJI[i]:(i+1)}</div>
+      <div class="lb-name ${i===0?'top1':''}">${s.name}</div>
+      <div class="lb-score">${s.score}</div>
+    </div>
+  `).join('');
 }
 
-function switchTab(id) {
+// ── Live leaderboard per game (onValue listener) ──────────────
+let lbUnsub = null;
+
+function listenLeaderboard(gameId) {
+  if (lbUnsub) { lbUnsub(); lbUnsub = null; }
+  document.getElementById('lbList').innerHTML = '<div class="lb-loading">Loading...</div>';
+
+  const q = query(ref(db, `/scores/${gameId}`), orderByChild('score'), limitToLast(10));
+  lbUnsub = onValue(q, snap => {
+    const rows = [];
+    snap.forEach(child => { const v = child.val(); if (v && v.name && v.score !== undefined) rows.push(v); });
+    rows.sort((a,b) => b.score - a.score);
+    renderRows(rows);
+
+    // Update hi on game card
+    if (rows.length > 0) {
+      const el = document.getElementById('hi-'+gameId);
+      if (el) el.textContent = 'HI: ' + rows[0].score;
+    }
+  }, err => {
+    document.getElementById('lbList').innerHTML = '<div class="lb-empty">Error loading scores</div>';
+    setFbStatus(false, err.message);
+  });
+}
+
+// Expose globally for onclick
+window.switchTab = function(id) {
   currentTab = id;
   renderTabs();
-  renderLeaderboard(id);
-}
+  listenLeaderboard(id);
+};
 
-// ── LCD preview ────────────────────────────────────────────────
+// ── LCD preview helper ────────────────────────────────────────
 function pad(str, len=20) {
   str = String(str);
   return str.length >= len ? str.substring(0,len) : str + ' '.repeat(len-str.length);
@@ -75,14 +111,15 @@ function pad(str, len=20) {
 function updateLCD(name='') {
   const el = document.getElementById('lcdPreview');
   const rows = name
-    ? [ pad('* IT FEST ARCADE *'), pad('Hello, '+name+'!'), pad('Hold >> to play'), pad('Good luck! :)') ]
-    : [ pad(''), pad('  IT FEST ARCADE'), pad('  Waiting...'), pad('') ];
-  el.innerHTML = rows.map(r => `<div class="lcd-row">${r}</div>`).join('');
+    ? [pad('* IT FEST ARCADE *'), pad('Hello, '+name+'!'), pad('Hold >> to play'), pad('Good luck! :)')]
+    : [pad('* IT FEST ARCADE *'), pad('  3 Games Inside'), pad('  Waiting player...'), pad('')];
+  el.innerHTML = rows.map(r => `<span class="lcd-row">${r}</span>`).join('');
 }
 
-// ── Register player (placeholder — Firebase connects later) ───
-function registerPlayer() {
+// ── Register player → write to /currentPlayer ────────────────
+window.registerPlayer = async function() {
   const input  = document.getElementById('nameIn');
+  const btn    = document.getElementById('startBtn');
   const status = document.getElementById('statusMsg');
   const name   = input.value.trim();
 
@@ -92,30 +129,65 @@ function registerPlayer() {
     return;
   }
 
-  status.textContent = '● Sending to station...';
+  btn.disabled       = true;
+  status.textContent = '● Sending to LCD station...';
   status.className   = 'status-msg wait';
 
-  // Simulate a brief send delay (replace with Firebase set later)
-  setTimeout(() => {
+  try {
+    await set(ref(db, '/currentPlayer'), {
+      name,
+      ready:     true,
+      timestamp: Date.now()
+    });
     status.textContent = '✔ Ready! Walk to the LCD station.';
     status.className   = 'status-msg ok';
     document.getElementById('npName').textContent = name.toUpperCase();
     updateLCD(name);
     input.value = '';
+    setFbStatus(true, 'Player registered');
     setTimeout(() => {
+      btn.disabled = false;
       status.textContent = '';
       status.className   = 'status-msg';
-    }, 7000);
-  }, 600);
-}
+    }, 8000);
+  } catch (err) {
+    status.textContent = '✖ ' + err.message;
+    status.className   = 'status-msg err';
+    btn.disabled = false;
+    setFbStatus(false, err.message);
+  }
+};
 
-// Enter key support
+// Enter key
 document.getElementById('nameIn').addEventListener('keydown', e => {
-  if (e.key === 'Enter') registerPlayer();
+  if (e.key === 'Enter') window.registerPlayer();
+});
+
+// ── Live "now playing" from /currentPlayer/name ───────────────
+onValue(ref(db, '/currentPlayer/name'), snap => {
+  const name = snap.val();
+  if (name && name.length >= 2) {
+    document.getElementById('npName').textContent = name.toUpperCase();
+  } else {
+    document.getElementById('npName').textContent = '— Waiting —';
+  }
 });
 
 // ── Init ──────────────────────────────────────────────────────
 renderGames();
 renderTabs();
-renderLeaderboard(currentTab);
 updateLCD();
+
+// Test Firebase connection
+try {
+  get(ref(db, '/currentPlayer/name')).then(() => {
+    setFbStatus(true, 'dino-game-59371 connected');
+  }).catch(err => {
+    setFbStatus(false, err.message);
+  });
+} catch(e) {
+  setFbStatus(false, e.message);
+}
+
+// Start listening to first tab
+listenLeaderboard(currentTab);
