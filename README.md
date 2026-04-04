@@ -195,7 +195,7 @@ Every component was chosen deliberately. The joystick uses analog GPIO pins. The
 
 ## 👨‍💻 Built By
 
-** K3NTOZAKI - ICS — IT Fest 2026**
+** K3NT0Z4K1 - ICS - IT Fest 2026**
 
 ---
 
