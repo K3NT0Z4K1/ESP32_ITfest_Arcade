@@ -1,7 +1,7 @@
 # 🕹️ IT FEST ARCADE
 ### ESP32 · 4×20 I2C LCD · Joystick · Firebase
 
-> A fully hardware-based arcade game station built for **IT Fest 2025** by the CSIT Department.  
+> A fully hardware-based arcade game station built for **IT Fest 2026** by K3NT0Z4K1 from ICS.  
 > 3 games. No PC needed during play. Scores sync live to a web dashboard via Firebase.
 
 ---
@@ -41,7 +41,7 @@
 | Microcontroller | ESP32 Dev Module |
 | Display | 4×20 I2C LCD (address `0x27` or `0x3F`) |
 | Input | KY-023 Joystick Module |
-| Power | 2× 18650 Li-ion batteries + 5V buck converter |
+| Power | 2× 18650 Li-ion batteries + 5V buck converter or Powerbank |
 | Prototyping | 830 tie-point breadboard |
 
 ---
